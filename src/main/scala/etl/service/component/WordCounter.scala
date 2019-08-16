@@ -1,5 +1,7 @@
 package etl.service.component
+import com.sun.xml.internal.ws.util.StringUtils
 import etl.model.{Content, Pairs, Sentence}
+
 import scala.collection.immutable.TreeMap
 
 object WordCounter {
@@ -10,7 +12,7 @@ object WordCounter {
   }
 
   def counter(data: List[String]): Map[String, Int] = {
-    data.foldLeft(TreeMap.empty[String, Int](_.compareToIgnoreCase(_))) {
+    data.foldLeft(TreeMap.empty[String,Int](Ordering.comparatorToOrdering(String.CASE_INSENSITIVE_ORDER))) {
       (ls, word) => ls.+(word -> (ls.getOrElse(word, 0) + 1))
     }
   }

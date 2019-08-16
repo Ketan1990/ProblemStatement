@@ -17,11 +17,7 @@ object FileOutputSource {
 
   def pairFormat(pair: (String, Int)): String = pair.toString() + "\n"
 
-
-  def write[Data](path: String, data: Data)(implicit writer: ContentWriter[Data]): Unit = {
-    val fw: PrintWriter = new PrintWriter(new File(path))
-    writer.write(fw, data).close()
-  }
-
+  def write[Data:ContentWriter](path: String, data: Data): Unit =
+    implicitly[ContentWriter[Data]].write(new PrintWriter(new File(path)), data).close()
 
 }
