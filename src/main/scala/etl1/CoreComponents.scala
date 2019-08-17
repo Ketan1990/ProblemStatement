@@ -22,8 +22,7 @@ trait CoreComponents {
     override def operation: Directory => Either[String, List[MetaRecord]] = { dir =>
       for {
         list <- fileList(dir.sorce)
-        extractedContents <- extractContent(list)
-      } yield extractedContents
+      } yield extractContent(list)
     }
   }
 
@@ -68,7 +67,7 @@ trait CoreComponents {
 
     def writeSigleLine(writer: PrintWriter, d: String) = Try(writer.write(d)) match {
       case Failure(msg) => Left("Failed to write")
-      case Success(()) => Right(())
+      case Success(_) => Right(_)
     }
 
     def writesPairs(writer: PrintWriter, value: Map[String, Int]) = Try(value.foreach(pair => writer.write(pair.toString())))

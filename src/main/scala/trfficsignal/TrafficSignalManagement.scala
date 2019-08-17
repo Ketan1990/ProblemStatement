@@ -8,6 +8,6 @@ trait TrafficSignalManagement {
 //
 //  def currentState:State[CurrentStatus,Unit]
 
-  def signal(incomingSignal:Direction,outgoingSignal:Direction)(currentStatus: CurrentStatus):Signal = ???
+  def signal(incomingSignal:Direction,outgoingSignal:Direction):CurrentStatus => Signal = ???
 
 }
