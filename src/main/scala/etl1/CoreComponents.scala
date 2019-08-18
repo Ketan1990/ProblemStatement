@@ -2,8 +2,6 @@ package etl1
 
 import java.io.{File, PrintWriter, Writer}
 
-import com.sun.net.httpserver.Authenticator.Success
-
 import scala.collection.immutable.TreeMap
 import scala.io.Source
 import scala.util.{Failure, Success, Try}
@@ -17,7 +15,8 @@ trait CoreComponents {
       if (directory.isDirectory) Right(directory.listFiles(_.isFile).toList) else Left("Check File path")
     }
 
-    def extractContent(files: List[File]): List[MetaRecord] = files.map(file => MetaRecord(file.getName, SingleLine(Source.fromFile(file).mkString)))
+    def extractContent(files: List[File]): List[MetaRecord] =
+      files.map(file => MetaRecord(file.getName, SingleLine(Source.fromFile(file).mkString)))
 
     override def operation: Directory => Either[String, List[MetaRecord]] = { dir =>
       for {
@@ -65,27 +64,28 @@ trait CoreComponents {
 
     def writer(path: String) = new PrintWriter(new File(path))
 
-    def writeSigleLine(writer: PrintWriter, d: String) = Try(writer.write(d)) match {
+    def writeSigleLine(writer: PrintWriter, d: String):Either[String,Unit] = Try(writer.write(d)) match {
       case Failure(msg) => Left("Failed to write")
-      case Success(_) => Right(_)
+      case Success(()) => Right(())
     }
 
-    def writesPairs(writer: PrintWriter, value: Map[String, Int]) = Try(value.foreach(pair => writer.write(pair.toString())))
+    def writesPairs(writer: PrintWriter, value: Map[String, Int]):Either[String,Unit] = Try(value.foreach(pair => writer.write(pair.toString())))
     match {
       case Failure(msg) => Left("Failed to write")
       case Success(()) => Right(())
     }
 
-    def writeInputs(dir: String, metaRecord: MetaRecord) = metaRecord match {
+    def writeInputs(dir: String, metaRecord: MetaRecord):Either[String,Unit] = metaRecord match {
       case MetaRecord(fn, SingleLine(line)) => writeSigleLine(writer(dir + "/" + fn), line)
       case MetaRecord(fn, Pairs(map)) => writesPairs(writer(dir + "/" + fn), map)
     }
 
     override def operation: DirOutput => Either[String, Unit] = dir => {
-      Right(for {
-        md <- dir.records
-        _ <- writeInputs(dir.destinatioPath, md)
-      } yield () )
+      val result: List[Either[String, Unit]] = for {
+       mr <- dir.records
+      }yield writeInputs(dir.destinatioPath,mr)
+
+      result.head
     }
   }
 
