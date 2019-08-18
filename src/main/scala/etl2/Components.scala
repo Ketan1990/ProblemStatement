@@ -97,7 +97,7 @@ object Apps extends App {
   import Components._
 
   val destionationPath = "/home/ketan/Documents/Problemdomain/data1"
-  val result: Components[String, Unit] = compose(dirInput,dirOutput(destionationPath))
+  val result = compose(dirInput,dirOutput(destionationPath)).operation(destionationPath)
 
   result match {
     case Left(msg) => println(msg)
