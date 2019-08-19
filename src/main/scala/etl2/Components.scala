@@ -1,13 +1,13 @@
 package etl2
 
 import java.io.{File, PrintWriter}
-import java.nio.file.{Files, Paths}
 
-import etl1.Output
-import scalaz.OptionT
+import scalaz.syntax._
+import scalaz.Scalaz._
 
 import scala.io.Source
 import scala.util.{Failure, Success, Try}
+
 
 case class Components[I, O](operation: I => Either[String, O])
 
@@ -27,7 +27,7 @@ object Components {
                                                inner: Components[InnerInput, Output]
                                              ) =
     Components[OuterInput, Output](
-      operation = (dataframe) => outer.operation(dataframe).flatMap(inner.operation)
+      operation = dataframe => outer.operation(dataframe).flatMap(inner.operation)
     )
 
   val capitalization: Components[MetaRecords, MetaRecords] =
@@ -42,11 +42,8 @@ object Components {
   val capitalization1: Components[List[MetaRecords], List[MetaRecords]] =
     Components[List[MetaRecords], List[MetaRecords]](
       operation = input => {
-        val a: Seq[Either[String, MetaRecords]] = for {
-          mr <- input
-        } yield capitalization.operation(mr)
-       ???
-      }:Either[String,List[MetaRecords]]
+        input.map(mr => capitalization.operation(mr)).sequence
+      }
   )
 
 
@@ -87,7 +84,7 @@ object Components {
 
   def dirOutput(dir: String): Components[List[MetaRecords], Unit] = Components[List[MetaRecords], Unit](
     operation = inputs => {
-      (for {mr <- inputs} yield writeInputs(dir, mr)).head
+     inputs.map(mr => writeInputs(dir,mr)).head
     }
   )
 }
@@ -97,10 +94,11 @@ object Apps extends App {
   import Components._
 
   val destionationPath = "/home/ketan/Documents/Problemdomain/data1"
-  val result = compose(dirInput,dirOutput(destionationPath)).operation(destionationPath)
+  val result = compose(compose(dirInput,capitalization1),dirOutput(destionationPath)).operation("/home/ketan/Documents/Problemdomain/data")
+
 
   result match {
     case Left(msg) => println(msg)
-    case Right(ls) => println(ls)
+    case Right(ls) => println("done")
   }
 }
