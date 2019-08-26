@@ -1,80 +1,42 @@
 package etl2.service
-
 import java.io.File
-
 import etl2.entity._
 
-
-case class Components[I, O](operation: I => Either[String, O])
-
-
 object Components {
+  val fileInputComponent: Component[FileSource, MetaRecords[Line]] = Component[FileSource, MetaRecords[Line]] {
+    Input => {
+      val file = new File(Input.path)
+      for {lines <- FileOpration.readFile(file)}
+        yield MetaRecords(file.getName, lines.map(l => Line(l)))
+    }
+  }
 
 
-  def compose[OuterInput, InnerInput, Output](
-                                               outer: Components[OuterInput, InnerInput],
-                                               inner: Components[InnerInput, Output]
-                                             ): Components[OuterInput, Output] =
-    Components[OuterInput, Output](operation = dataframe => outer.operation(dataframe).flatMap(inner.operation))
-
-
-  val capitalize: Components[Record, Record] =
-    Components[Record, Record](
-      operation = {
-        case Content(f, a) => if (a.isEmpty) Left("Record is empty") else Right(Content(f, a.toUpperCase))
-        case Pairs(f, map) => Right(Pairs(f, map.map(pair => (pair._1.toUpperCase, pair._2))))
+  def toCapitalize:Component[MetaRecords[Line],MetaRecords[Line]] = Component[MetaRecords[Line],MetaRecords[Line]](
+    operation = inputs => {
+      val lines = inputs.lines.map {
+        case Line(a) => Line(a.toUpperCase())
       }
-    )
-
-
-  val FileInputComponent: Components[FileInput, Record] = Components[FileInput, Record](
-    operation = file => Record.readSingleFile(new File(file.path))
+       Right(MetaRecords(inputs.sourceName,lines))
+    }
   )
 
-  def fileOutputComponent(filePath: FileOutputSource): Components[Record, Unit] = Components[Record, Unit](
-    input => Record.writeIntoFile(filePath.destinationPath, input)
-  )
+  def wordCount:Component[MetaRecords[Line],MetaRecords[Record]] = Component[MetaRecords[Line],MetaRecords[Record]](
+    operation = input => {
+      val counts =input.lines.flatMap(_.data.split("\\s+"))
+        .map(_.stripSuffix(",").stripSuffix("."))
+        .distinct
+        .map(word => word.toLowerCase -> 1).groupBy(_._1).view.mapValues(_.length).toList
+        .map(pair => KeyValue(pair._1,pair._2))
 
-  val wordCalculate: Components[Record, Record] = Components[Record, Record](
-    operation = {
-      case Content(f, data) => for {
-        words <- WordsSplit(data)
-        wordCount <- WordCounter.bulkInsert(words.toSet.toList)
-      } yield Pairs(f, wordCount)
-
-      case p@Pairs(f, data) => ???
+        Right(MetaRecords(input.sourceName,counts))
 
     }
   )
 
-
-  val capitalizeRecords: Components[List[Record], List[Record]] =
-    Components[List[Record], List[Record]](
-      operation = input => {
-        val result = input.map(a => capitalize.operation(a))
-        Traverse.sequence(result)
-      }
-    )
-
-
-  val WordCalculateRecords: Components[List[Record], List[Record]] = Components[List[Record], List[Record]](
-    operation = records => {
-      Traverse.sequence(records.map(wordCalculate.operation))
-    }
-
-  )
-
-  val dirInputComponent: Components[DirectoryInput, List[Record]] = Components[DirectoryInput, List[Record]](
-    operation = dir => for {
-      files <- FileOperation.directoryWalk(dir.path)
-      records <- Record.readFromFiles(files)
-    } yield records
-  )
-
-
-  def dirOutputComponent(dir: DirectoryOutputSource): Components[List[Record], List[Unit]] = Components[List[Record], List[Unit]](
-    operation = records => Traverse.sequence(records.map(record => Record.writeIntoFile(dir.path, record)))
+  def fileOutputComponent(dir: Directory): Component[MetaRecords[Record], Unit] = Component[MetaRecords[Record], Unit](
+    operation = inputs => for {
+        fileWriter <- FileOpration.fileWriter(dir.path, inputs.sourceName)
+      } yield FileOpration.saveFile(fileWriter,inputs.lines)
   )
 }
-
-

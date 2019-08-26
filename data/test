@@ -1,1 +1,5 @@
-Hi this is demo Text
+Files If you want to limit the list of files that are returned based on their filename extension,
+in Java, you’d implement a FileFilter with an accept method to filter the filenames that are returned.
+In Scala, you can write the equivalent code without requiring a FileFilter.
+Assuming that the File you’re given represents a directory Directory that is known to exist,
+the following method shows how to filter a set of files based on the filename extensions that should be returned:

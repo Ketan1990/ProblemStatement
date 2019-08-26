@@ -1,8 +1,8 @@
 package etl2.entity
 
-trait InputSource
-case class FileInput(path:String) extends InputSource
-case class DirectoryInput(path:String) extends InputSource
+trait Source
+case class FileSource(path:String) extends Source
+case class DirectorySource(path:String) extends Source
 
 
 
